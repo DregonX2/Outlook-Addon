@@ -3,64 +3,38 @@
   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   xmlns:bt="http://schemas.microsoft.com/office/officeappbasictypes/1.0"
   xsi:type="MailApp" Version="1.0.0.0" ProviderName="JA Canada Workspace" DefaultLocale="en-US">
-
-  <Id>40e083f6-c098-4335-b9df-59fe71b18a4f</Id>
-  <DisplayName DefaultValue="Outlook to Salesforce"/>
-  <Description DefaultValue="Upsert Salesforce Contacts and log activities from Outlook"/>
+  <Id>[NEW-GUID]</Id>
+  <DisplayName DefaultValue="Outlook to Salesforce (Commands)"/>
+  <Description DefaultValue="Commands only."/>
   <IconUrl DefaultValue="https://localhost:3001/addin/assets/icon-32.png"/>
   <HighResolutionIconUrl DefaultValue="https://localhost:3001/addin/assets/icon-32.png"/>
   <SupportUrl DefaultValue="https://example.com"/>
 
-  <AppDomains>
-    <AppDomain>localhost</AppDomain>
-  </AppDomains>
+  <AppDomains><AppDomain>localhost</AppDomain></AppDomains>
+  <Hosts><Host Name="Mailbox"/></Hosts>
 
-  <Hosts>
-    <Host Name="Mailbox"/>
-  </Hosts>
-
-  <!-- Requirement set 1.8 is sufficient for ExecuteFunction commands + ItemSend -->
   <Requirements>
     <Sets DefaultMinVersion="1.8">
       <Set Name="Mailbox" MinVersion="1.8"/>
     </Sets>
   </Requirements>
 
-  <!-- Optional form pane for ItemRead (OK to keep) -->
-  <FormSettings>
-    <Form xsi:type="ItemRead">
-      <DesktopSettings>
-        <SourceLocation DefaultValue="https://localhost:3001/addin/src/taskpane.html"/>
-      </DesktopSettings>
-    </Form>
-  </FormSettings>
-
-  <!-- ItemSend needs ReadWriteMailbox -->
-  <Permissions>ReadWriteMailbox</Permissions>
+  <Permissions>ReadItem</Permissions>
 
   <Rule xsi:type="RuleCollection" Mode="Or">
     <Rule xsi:type="ItemIs" ItemType="Message" FormType="Read"/>
-    <Rule xsi:type="ItemIs" ItemType="Message" FormType="Compose"/>
   </Rule>
 
-  <DisableEntityHighlighting>false</DisableEntityHighlighting>
-
-  <!-- *** IMPORTANT: single VersionOverrides with xsi:type="VersionOverridesV1_1" *** -->
   <VersionOverrides xmlns="http://schemas.microsoft.com/office/mailappversionoverrides/1.1"
                     xsi:type="VersionOverridesV1_1">
-
     <Hosts>
       <Host xsi:type="MailHost">
         <DesktopFormFactor>
-          <!-- Function file that defines sendToSalesforce / openSettings / onMessageSendHandler -->
           <FunctionFile resid="residFunctionFile"/>
-
-          <!-- Ribbon buttons -->
           <ExtensionPoint xsi:type="MessageReadCommandSurface">
             <OfficeTab id="TabDefault">
               <Group id="msgReadGroup" label="Salesforce">
-
-                <Control xsi:type="Button" id="btnSendToSF" enabled="true" label="Send to Salesforce">
+                <Control xsi:type="Button" id="btnOpenPane" enabled="true" label="Open Pane">
                   <Icon>
                     <bt:Image size="16" resid="icon16"/>
                     <bt:Image size="32" resid="icon32"/>
@@ -70,43 +44,21 @@
                     <FunctionName>sendToSalesforce</FunctionName>
                   </Action>
                 </Control>
-
-                <Control xsi:type="Button" id="btnSettings" enabled="true" label="Settings">
-                  <Icon>
-                    <bt:Image size="16" resid="icon16"/>
-                    <bt:Image size="32" resid="icon32"/>
-                    <bt:Image size="80" resid="icon80"/>
-                  </Icon>
-                  <Action xsi:type="ExecuteFunction">
-                    <FunctionName>openSettings</FunctionName>
-                  </Action>
-                </Control>
-
               </Group>
             </OfficeTab>
           </ExtensionPoint>
-
-          <!-- Event-based on send -->
-          <ExtensionPoint xsi:type="Events">
-            <Event Type="ItemSend" FunctionName="onMessageSendHandler"/>
-          </ExtensionPoint>
-
         </DesktopFormFactor>
       </Host>
     </Hosts>
-
-    <!-- Resources referenced above -->
     <Resources>
       <bt:Images>
         <bt:Image id="icon16" DefaultValue="https://localhost:3001/addin/assets/icon-16.png"/>
         <bt:Image id="icon32" DefaultValue="https://localhost:3001/addin/assets/icon-32.png"/>
         <bt:Image id="icon80" DefaultValue="https://localhost:3001/addin/assets/icon-32.png"/>
       </bt:Images>
-
       <bt:Urls>
         <bt:Url id="residFunctionFile" DefaultValue="https://localhost:3001/addin/src/function-file.html"/>
       </bt:Urls>
     </Resources>
-
   </VersionOverrides>
 </OfficeApp>
