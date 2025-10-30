@@ -1,3 +1,5 @@
 node_modules
 .env
 dist
+backend/secure-store.json
+backend/secure-store.key

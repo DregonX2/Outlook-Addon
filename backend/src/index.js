@@ -1,10 +1,10 @@
 import express from 'express';
-import fetch from 'node-fetch';
 import session from 'cookie-session';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { ensureToken, upsertContactByEmail, lookupContact, createTaskForContact } from './salesforce.js';
+import { saveConfig, loadConfig } from './configStore.js';
+import { ensureToken, startOAuthUrl, exchangeCodeForToken, upsertContactByFour, createTaskForContact } from './salesforce.js';
 
 dotenv.config();
 const __filename = fileURLToPath(import.meta.url);
@@ -19,36 +19,47 @@ app.use('/addin', express.static(path.join(__dirname, '../../addin')));
 
 app.get('/healthz', (_req,res)=>res.send('ok'));
 
-// ---- Auth routes ----
-app.get('/auth/sf/login', (req,res)=>{
-  const state = 'st';
-  const params = new URLSearchParams({
-    response_type: 'code',
-    client_id: process.env.SF_CLIENT_ID,
-    redirect_uri: process.env.SF_REDIRECT_URI,
-    scope: process.env.SF_SCOPES||'api refresh_token',
-    state
-  });
-  res.redirect(`${process.env.SF_LOGIN_URL}/services/oauth2/authorize?${params.toString()}`);
+// ----- Settings (encrypted) -----
+app.get('/api/config', (req,res)=>{
+  const cfg = loadConfig() || {};
+  res.json({ domain: cfg.domain || '', clientId: cfg.clientId || '' }); // never return clientSecret
+});
+
+app.post('/api/config', (req,res)=>{
+  const { domain, clientId, clientSecret } = req.body || {};
+  if(!domain || !clientId || !clientSecret){
+    return res.status(400).json({ ok:false, error:'Please provide domain, clientId, and clientSecret.' });
+  }
+  try{
+    saveConfig({ domain: String(domain).trim(), clientId: String(clientId).trim(), clientSecret: String(clientSecret).trim() });
+    res.json({ ok:true });
+  }catch(e){
+    res.status(500).json({ ok:false, error: e.message });
+  }
+});
+
+// ----- OAuth -----
+app.get('/auth/sf/login', async (_req,res)=>{
+  try{
+    const url = await startOAuthUrl();
+    res.redirect(url);
+  }catch(e){
+    res.status(500).send(String(e.message||e));
+  }
 });
 
 app.get('/auth/sf/callback', async (req,res)=>{
-  const { code } = req.query;
-  const params = new URLSearchParams({
-    grant_type: 'authorization_code',
-    code,
-    client_id: process.env.SF_CLIENT_ID,
-    client_secret: process.env.SF_CLIENT_SECRET,
-    redirect_uri: process.env.SF_REDIRECT_URI
-  });
-  const r = await fetch(`${process.env.SF_LOGIN_URL}/services/oauth2/token`, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body: params });
-  const tok = await r.json();
-  if(!r.ok){ return res.status(500).json(tok); }
-  req.session.sf = { refresh_token: tok.refresh_token, instance_url: tok.instance_url, id: tok.id };
-  res.send('Salesforce connected. You can close this window.');
+  try{
+    const { code } = req.query;
+    const tok = await exchangeCodeForToken(code);
+    req.session.sf = { refresh_token: tok.refresh_token, instance_url: tok.instance_url, id: tok.id };
+    res.send('Salesforce connected. You can close this window.');
+  }catch(e){
+    res.status(500).send('OAuth error: ' + String(e.message||e));
+  }
 });
 
-// ---- Me endpoints ----
+// ----- Me prefs -----
 app.get('/api/me', (req,res)=>{
   res.json({ defaultCharter: req.session.defaultCharter||'' });
 });
@@ -57,23 +68,12 @@ app.post('/api/me/charter-default', (req,res)=>{
   res.json({ ok: true });
 });
 
-// ---- Salesforce endpoints ----
-app.get('/api/sf/lookup-contact', async (req,res)=>{
-  try{
-    const { email } = req.query;
-    const token = await ensureToken(req.session);
-    const result = await lookupContact(token, email);
-    res.json(result);
-  }catch(e){
-    res.status(500).json({ ok:false, error: e.message });
-  }
-});
-
+// ----- Salesforce endpoints -----
 app.post('/api/sf/upsert-contact', async (req,res)=>{
   try{
     const token = await ensureToken(req.session);
     const { email, firstName, lastName, charter } = req.body;
-    const { contactId, contactUrl, preview } = await upsertContactByEmail(token, { email, firstName, lastName, charter });
+    const { contactId, contactUrl, preview } = await upsertContactByFour(token, { email, firstName, lastName, charter });
     res.json({ ok:true, contactId, contactUrl, preview });
   }catch(e){
     res.status(500).json({ ok:false, error: e.message });
@@ -84,7 +84,7 @@ app.post('/api/sf/log-activity', async (req,res)=>{
   try{
     const token = await ensureToken(req.session);
     const { email, subject, charter } = req.body;
-    const { contactId } = await upsertContactByEmail(token, { email, firstName:'', lastName:'', charter });
+    const { contactId } = await upsertContactByFour(token, { email, firstName:'', lastName:'', charter });
     const taskId = await createTaskForContact(token, { contactId, subject, charter });
     res.json({ ok:true, taskId });
   }catch(e){
@@ -94,7 +94,7 @@ app.post('/api/sf/log-activity', async (req,res)=>{
 
 const port = process.env.PORT || 3000;
 app.listen(port, ()=>{
-  console.log('Server on https://localhost:'+port);
-  console.log('Add-in assets at https://localhost:'+port+'/addin/src/taskpane.html');
-  console.log('Connect Salesforce at https://localhost:'+port+'/auth/sf/login');
+  console.log('Server on http://localhost:'+port);
+  console.log('Add-in assets at https://localhost:'+port+'/addin/src/taskpane.html (via SSL proxy)');
+  console.log('Open Settings at https://localhost:'+port+'/addin/src/settings.html after SSL proxy is up.');
 });

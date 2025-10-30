@@ -47,6 +47,11 @@
                            label="Send to Salesforce"
                            icon="https://localhost:3000/addin/assets/icon-32.png"
                            onAction="sendToSalesforce"/>
+                  <Control xsi:type="Button" id="btnSettings"
+                           enabled="true"
+                           label="Settings"
+                           icon="https://localhost:3000/addin/assets/icon-32.png"
+                           onAction="openSettings"/>
                 </Group>
               </OfficeTab>
             </ExtensionPoint>

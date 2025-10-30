@@ -5,7 +5,7 @@
     const name = params.get('name') || '';
     document.getElementById('sender').textContent = name + ' <' + email + '>';
 
-    // Get default charter
+    // Load default charter
     fetch('/api/me')
       .then(r=>r.json()).then(me=>{
         if(me.defaultCharter){
@@ -29,10 +29,10 @@
       const data = await res.json();
       const result = document.getElementById('result');
       if(!data.ok){
-        result.textContent = 'Salesforce error: ' + (data.error || 'Unknown');
+        result.innerHTML = '<span class="error">Salesforce error: ' + escapeHtml(data.error||'Unknown') + '</span>';
         return;
       }
-      result.innerHTML = 'Saved to Salesforce: <a target="_blank" href="'+data.contactUrl+'">'+data.contactId+'</a>';
+      result.innerHTML = '<span class="success">Saved to Salesforce:</span> <a target="_blank" href="'+data.contactUrl+'">'+data.contactId+'</a>';
 
       // Preview if available
       if(data.preview){

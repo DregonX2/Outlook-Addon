@@ -12,7 +12,11 @@
 <body>
   <div id="app">
     <h3>Send to Salesforce</h3>
-    <div id="sender"></div>
+    <div class="line">
+      <span id="sender"></span>
+      <a id="settingsLink" class="right" href="/addin/src/settings.html" target="_blank">Settings</a>
+    </div>
+
     <label>Charter
       <select id="charter">
         <option>North</option>
@@ -21,6 +25,7 @@
         <option>West</option>
       </select>
     </label>
+
     <button id="submitBtn">Upsert Contact</button>
     <div id="result"></div>
     <div id="preview" class="card hidden"></div>

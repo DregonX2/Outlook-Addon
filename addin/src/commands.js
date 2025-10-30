@@ -11,7 +11,12 @@ function sendToSalesforce(event){
   });
 }
 
-// Compose send event
+function openSettings(event){
+  Office.context.ui.displayDialogAsync(window.location.origin + '/addin/src/settings.html', {height:45,width:40,displayInIframe:true}, ()=>{
+    event.completed();
+  });
+}
+
 function onMessageSendHandler(event){
   Office.context.ui.displayDialogAsync(window.location.origin + '/addin/src/compose.html', {height:35,width:30,displayInIframe:true}, (asyncResult)=>{
     const dlg = asyncResult.value;
@@ -20,7 +25,6 @@ function onMessageSendHandler(event){
         const data = JSON.parse(args.message);
         if(data.type==='submitCharter'){
           const item = Office.context.mailbox.item;
-          // First recipient is used to upsert/log
           const toRecipients = (item.to || []);
           let to = '';
           if (toRecipients.length && typeof toRecipients[0] === 'object') {
@@ -43,5 +47,5 @@ function onMessageSendHandler(event){
 }
 
 if(typeof module!=='undefined'){
-  module.exports = { sendToSalesforce, onMessageSendHandler };
+  module.exports = { sendToSalesforce, onMessageSendHandler, openSettings };
 }

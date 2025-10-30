@@ -1,38 +1,99 @@
 import fetch from 'node-fetch';
+import { loadConfig } from './configStore.js';
+
+function requireConfig(){
+  const cfg = loadConfig();
+  if(!cfg || !cfg.domain || !cfg.clientId || !cfg.clientSecret){
+    throw new Error('Salesforce not configured. Open Settings and save your domain, client id, and client secret.');
+  }
+  return cfg;
+}
 
 export async function ensureToken(session){
-  if(!session.sf || !session.sf.refresh_token) throw new Error('Not connected to Salesforce. Open /auth/sf/login');
+  const cfg = requireConfig();
+  if(!session.sf || !session.sf.refresh_token){
+    throw new Error('Not connected to Salesforce. Use Settings → Connect.');
+  }
   const params = new URLSearchParams({
     grant_type: 'refresh_token',
-    client_id: process.env.SF_CLIENT_ID,
-    client_secret: process.env.SF_CLIENT_SECRET,
+    client_id: cfg.clientId,
+    client_secret: cfg.clientSecret,
     refresh_token: session.sf.refresh_token
   });
-  const r = await fetch(`${process.env.SF_LOGIN_URL}/services/oauth2/token`, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body: params });
+  const r = await fetch(`${cfg.domain}/services/oauth2/token`, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body: params });
   const tok = await r.json();
   if(!r.ok) throw new Error(tok.error_description||'Salesforce token error');
   return { access_token: tok.access_token, instance_url: session.sf.instance_url };
 }
 
-export async function lookupContact(token, email){
-  const soql = `SELECT Id, Name, Title, Account.Name FROM Contact WHERE Email='${email.replace(/'/g, "\'")}' LIMIT 2`;
+export async function startOAuthUrl(){
+  const cfg = requireConfig();
+  const redirectUri = process.env.SF_REDIRECT_URI || 'https://localhost:3000/auth/sf/callback';
+  const scopes = process.env.SF_SCOPES || 'api refresh_token';
+  const params = new URLSearchParams({
+    response_type: 'code',
+    client_id: cfg.clientId,
+    redirect_uri: redirectUri,
+    scope: scopes,
+    state: 'st'
+  });
+  return `${cfg.domain}/services/oauth2/authorize?${params.toString()}`;
+}
+
+export async function exchangeCodeForToken(code){
+  const cfg = requireConfig();
+  const redirectUri = process.env.SF_REDIRECT_URI || 'https://localhost:3000/auth/sf/callback';
+  const params = new URLSearchParams({
+    grant_type: 'authorization_code',
+    code,
+    client_id: cfg.clientId,
+    client_secret: cfg.clientSecret,
+    redirect_uri: redirectUri
+  });
+  const r = await fetch(`${cfg.domain}/services/oauth2/token`, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body: params });
+  const tok = await r.json();
+  if(!r.ok) throw new Error(tok.error_description || tok.error || 'OAuth token error');
+  return tok;
+}
+
+export async function lookupContactByFour(token, { email, firstName, lastName, charter }){
+  const soql = `SELECT Id, Name, Title, Account.Name FROM Contact WHERE FirstName=${soqlStr(firstName)} AND LastName=${soqlStr(lastName)} AND Email=${soqlStr(email)} AND Charter__c=${soqlStr(charter)} LIMIT 2`;
   const r = await sfGet(token, `/services/data/v61.0/query?q=${encodeURIComponent(soql)}`);
   return r;
 }
 
-export async function upsertContactByEmail(token, { email, firstName, lastName, charter }){
-  const path = `/services/data/v61.0/sobjects/Contact/ExternalEmail__c/${encodeURIComponent(email)}`;
-  const body = { FirstName: firstName||'', LastName: lastName||(email.split('@')[0]), Email: email, Charter__c: charter||null };
-  const resp = await sfPatch(token, path, body);
-  const contactId = resp.id || resp.Id || (resp.success && resp.id);
+export async function upsertContactByFour(token, { email, firstName, lastName, charter }){
+  const q = await lookupContactByFour(token, { email, firstName, lastName, charter });
+  if(q.totalSize > 1){
+    throw new Error('Multiple contacts matched (First/Last/Email/Charter). Please resolve duplicates in Salesforce.');
+  }
+  let contactId = null;
+  if(q.totalSize === 1){
+    contactId = q.records[0].Id;
+    await sfPatch(token, `/services/data/v61.0/sobjects/Contact/${contactId}`, {
+      FirstName: firstName||'',
+      LastName: lastName|| (email ? email.split('@')[0] : ''),
+      Email: email,
+      Charter__c: charter || null
+    });
+  }else{
+    const resp = await sfPost(token, '/services/data/v61.0/sobjects/Contact', {
+      FirstName: firstName||'',
+      LastName: lastName|| (email ? email.split('@')[0] : ''),
+      Email: email,
+      Charter__c: charter || null
+    });
+    contactId = resp.id;
+  }
   const contactUrl = `${token.instance_url}/lightning/r/Contact/${contactId}/view`;
-  // Get preview
+
+  // Preview
   let preview = null;
   try{
     const soql = `SELECT Id, Name, Title, Account.Name FROM Contact WHERE Id='${contactId}' LIMIT 1`;
-    const q = await sfGet(token, `/services/data/v61.0/query?q=${encodeURIComponent(soql)}`);
-    if(q.records && q.records[0]){
-      const rec = q.records[0];
+    const q2 = await sfGet(token, `/services/data/v61.0/query?q=${encodeURIComponent(soql)}`);
+    if(q2.records && q2.records[0]){
+      const rec = q2.records[0];
       preview = { Name: rec.Name, Title: rec.Title||'', Account: rec.Account? rec.Account.Name: '' };
     }
   }catch{}
@@ -50,6 +111,13 @@ export async function createTaskForContact(token, { contactId, subject, charter 
   return resp.id;
 }
 
+// Helpers
+function soqlStr(v){
+  if(v==null) return 'NULL';
+  const s = String(v).replace(/'/g, "\'");
+  return `'${s}'`;
+}
+
 async function sfGet(token, url){
   const r = await fetch(token.instance_url + url, { headers: { Authorization: 'Bearer '+token.access_token }});
   const j = await r.json();
@@ -58,11 +126,7 @@ async function sfGet(token, url){
 }
 async function sfPatch(token, url, body){
   const r = await fetch(token.instance_url + url, { method:'PATCH', headers: { Authorization: 'Bearer '+token.access_token, 'Content-Type':'application/json' }, body: JSON.stringify(body)});
-  if(r.status===204){
-    // No content but success; fetch Id via lookup
-    const q = await lookupContact(token, body.Email);
-    return { id: q.records?.[0]?.Id };
-  }
+  if(r.status===204){ return { success: true }; }
   const j = await r.json().catch(()=>({}));
   if(!r.ok) throw new Error(j[0]?.message || j.message || 'Salesforce PATCH error');
   return j;
