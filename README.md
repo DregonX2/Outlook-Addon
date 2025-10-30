@@ -22,17 +22,17 @@ Cross-platform Outlook Web Add-in + Node/Express backend that:
 ```bash
 cd backend
 cp .env.example .env
-# Fill in SF_* values
+# Fill SF_* values
 npm i
 npm run dev
 ```
-This serves APIs on http://localhost:3000 and static add-in assets from `/addin/src`.
+This serves APIs on https://localhost:3000 and static add-in assets from `/addin/src`.
 
 ### 3) Outlook Add-in
 - Open `manifest.xml` and ensure:
-  - `<Hosts>` includes Outlook
-  - `<SourceLocation>` and icon URLs point to your dev server (https://localhost:3000)
-- Enable HTTPS locally (e.g., dev cert + reverse proxy) or update the manifest to match your server URL.
+  - <Hosts> includes Outlook
+  - <SourceLocation> and icon URLs point to your dev server (https://localhost:3000)
+- Enable HTTPS locally (dev cert) or update the manifest to your server URL.
 - Sideload into Outlook for Web/Desktop (see Microsoft docs).
 
 ### 4) Flows
