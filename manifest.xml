@@ -6,11 +6,11 @@
   <Id>f1f2d8c4-3c64-4c2d-b0b3-6d3f3fe0b001</Id>
   <DisplayName DefaultValue="Outlook to Salesforce"/>
   <Description DefaultValue="Upsert Salesforce Contacts and log activities from Outlook"/>
-  <IconUrl DefaultValue="https://localhost:3000/addin/assets/icon-32.png"/>
-  <HighResolutionIconUrl DefaultValue="https://localhost:3000/addin/assets/icon-32.png"/>
+  <IconUrl DefaultValue="https://localhost:3001/addin/assets/icon-32.png"/>
+  <HighResolutionIconUrl DefaultValue="https://localhost:3001/addin/assets/icon-32.png"/>
   <SupportUrl DefaultValue="https://example.com"/>
   <AppDomains>
-    <AppDomain>localhost:3000</AppDomain>
+    <AppDomain>localhost:3001</AppDomain>
   </AppDomains>
   <Hosts>
     <Host Name="Mailbox"/>
@@ -23,7 +23,7 @@
   <FormSettings>
     <Form xsi:type="ItemRead">
       <DesktopSettings>
-        <SourceLocation DefaultValue="https://localhost:3000/addin/src/taskpane.html"/>
+        <SourceLocation DefaultValue="https://localhost:3001/addin/src/taskpane.html"/>
       </DesktopSettings>
     </Form>
   </FormSettings>
@@ -45,12 +45,12 @@
                   <Control xsi:type="Button" id="btnSendToSF"
                            enabled="true"
                            label="Send to Salesforce"
-                           icon="https://localhost:3000/addin/assets/icon-32.png"
+                           icon="https://localhost:3001/addin/assets/icon-32.png"
                            onAction="sendToSalesforce"/>
                   <Control xsi:type="Button" id="btnSettings"
                            enabled="true"
                            label="Settings"
-                           icon="https://localhost:3000/addin/assets/icon-32.png"
+                           icon="https://localhost:3001/addin/assets/icon-32.png"
                            onAction="openSettings"/>
                 </Group>
               </OfficeTab>
@@ -63,10 +63,10 @@
       </Hosts>
       <Resources>
         <bt:Images>
-          <bt:Image id="residIcon32" DefaultValue="https://localhost:3000/addin/assets/icon-32.png"/>
+          <bt:Image id="residIcon32" DefaultValue="https://localhost:3001/addin/assets/icon-32.png"/>
         </bt:Images>
         <bt:Urls>
-          <bt:Url id="residFunctionFile" DefaultValue="https://localhost:3000/addin/src/function-file.html"/>
+          <bt:Url id="residFunctionFile" DefaultValue="https://localhost:3001/addin/src/function-file.html"/>
         </bt:Urls>
       </Resources>
     </VersionOverrides>
