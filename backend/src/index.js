@@ -4,7 +4,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { saveConfig, loadConfig } from './configStore.js';
-import { ensureToken, startOAuthUrl, exchangeCodeForToken, upsertContactByFour, createTaskForContact } from './salesforce.js';
+import { ensureToken, startOAuthUrl, exchangeCodeForToken, upsertContactByFour, createTaskForContact, createEmailMessageForContact } from './salesforce.js';
 
 dotenv.config();
 const __filename = fileURLToPath(import.meta.url);
@@ -80,6 +80,7 @@ app.post('/api/sf/upsert-contact', async (req,res)=>{
   }
 });
 
+// Existing: log-activity (Task)
 app.post('/api/sf/log-activity', async (req,res)=>{
   try{
     const token = await ensureToken(req.session);
@@ -87,6 +88,30 @@ app.post('/api/sf/log-activity', async (req,res)=>{
     const { contactId } = await upsertContactByFour(token, { email, firstName:'', lastName:'', charter });
     const taskId = await createTaskForContact(token, { contactId, subject, charter });
     res.json({ ok:true, taskId });
+  }catch(e){
+    res.status(500).json({ ok:false, error: e.message });
+  }
+});
+
+// New: save-email as EmailMessage and link to Contact
+app.post('/api/sf/save-email', async (req,res)=>{
+  try{
+    const token = await ensureToken(req.session);
+    const { senderEmail, subject, htmlBody, textBody, to, cc, messageDate, direction, charter } = req.body || {};
+    // Upsert Contact by sender email; name unknown here (we only have address)
+    const { contactId } = await upsertContactByFour(token, { email: senderEmail, firstName:'', lastName:'', charter });
+    const { emailId, emailUrl } = await createEmailMessageForContact(token, {
+      contactId,
+      subject,
+      htmlBody,
+      textBody,
+      from: senderEmail,
+      to,
+      cc,
+      messageDate,
+      direction
+    });
+    res.json({ ok:true, emailId, emailUrl, contactId });
   }catch(e){
     res.status(500).json({ ok:false, error: e.message });
   }

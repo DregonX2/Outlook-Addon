@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset='UTF-8'>
+  <title>Outlook Event Handler</title>
+  <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+  <script>
+    Office.onReady(() => {
+      // Associate the onMessageSend function with Outlook event
+      Office.actions.associate("onMessageSend", async (event) => {
+        try {
+          console.log("onMessageSend event triggered");
+          // TODO: Add Salesforce API call here if needed
+
+          // Complete the event and allow message to be sent
+          event.completed({ allowEvent: true });
+        } catch (error) {
+          console.error("Error in onMessageSend handler:", error);
+          // Allow sending even if error occurs
+          event.completed({ allowEvent: true });
+        }
+      });
+    });
+  </script>
+</head>
+<body>
+  <h3>Event Handler Loaded</h3>
+</body>
+</html>

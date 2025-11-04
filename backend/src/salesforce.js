@@ -100,6 +100,36 @@ export async function upsertContactByFour(token, { email, firstName, lastName, c
   return { contactId, contactUrl, preview };
 }
 
+// New: Create EmailMessage + relation to Contact
+export async function createEmailMessageForContact(token, { contactId, subject, htmlBody, textBody, from, to, cc, messageDate, direction }){
+  const payload = {
+    Subject: subject || '',
+    FromAddress: from || '',
+    ToAddress: (to || []).join('; '),
+    CcAddress: (cc || []).join('; '),
+    HtmlBody: htmlBody || undefined,
+    TextBody: (!htmlBody && textBody) ? textBody : undefined,
+    MessageDate: messageDate || new Date().toISOString(),
+    Incoming: direction === 'inbound'
+  };
+  const em = await sfPost(token, '/services/data/v61.0/sobjects/EmailMessage', payload);
+  const emailId = em.id;
+
+  // Link to Contact via EmailMessageRelation
+  try{
+    await sfPost(token, '/services/data/v61.0/sobjects/EmailMessageRelation', {
+      EmailMessageId: emailId,
+      RelationId: contactId,
+      RelationType: 'ToAddress' // minimal link; SF populates participants via addresses too
+    });
+  }catch(e){
+    // If relation creation fails, still return email id (the EmailMessage exists)
+  }
+
+  const emailUrl = `${token.instance_url}/lightning/r/EmailMessage/${emailId}/view`;
+  return { emailId, emailUrl };
+}
+
 export async function createTaskForContact(token, { contactId, subject, charter }){
   const body = {
     Subject: subject || 'Email sent',
