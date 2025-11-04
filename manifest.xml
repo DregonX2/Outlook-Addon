@@ -1,96 +1,72 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <OfficeApp xmlns="http://schemas.microsoft.com/office/appforoffice/1.1"
-           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-           xmlns:bt="http://schemas.microsoft.com/office/officeappbasictypes/1.0"
-           xmlns:mailappor="http://schemas.microsoft.com/office/mailappversionoverrides/1.0"
-           xsi:type="MailApp">
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns:bt="http://schemas.microsoft.com/office/officeappbasictypes/1.0"
+  xsi:type="MailApp" Version="1.0.0.0" ProviderName="JA Canada Workspace" DefaultLocale="en-US">
 
-  <!-- Basic Info -->
   <Id>40e083f6-c098-4335-b9df-59fe71b18a4f</Id>
-  <Version>1.0.0.0</Version>
-  <ProviderName>Your Company Name</ProviderName>
-  <DefaultLocale>en-US</DefaultLocale>
-  <DisplayName DefaultValue="Salesforce Add-in"/>
-  <Description DefaultValue="Send emails to Salesforce and manage settings."/>
+  <DisplayName DefaultValue="Outlook to Salesforce"/>
+  <Description DefaultValue="Upsert Salesforce Contacts and save emails from Outlook"/>
   <IconUrl DefaultValue="https://localhost:3001/addin/assets/icon-32.png"/>
- 3001/support"/>
+  <HighResolutionIconUrl DefaultValue="https://localhost:3001/addin/assets/icon-32.png"/>
+  <SupportUrl DefaultValue="https://example.com"/>
+
+  <AppDomains><AppDomain>localhost</AppDomain></AppDomains>
+
+  <Hosts><Host Name="Mailbox"/></Hosts>
+
+  <Requirements><Sets DefaultMinVersion="1.8"><Set Name="Mailbox" MinVersion="1.8"/></Sets></Requirements>
+
+  <FormSettings>
+    <Form xsi:type="ItemRead"><DesktopSettings>
+      <SourceLocation DefaultValue="https://localhost:3001/addin/src/taskpane.html"/>
+    </DesktopSettings></Form>
+  </FormSettings>
+
   <Permissions>ReadWriteMailbox</Permissions>
-  <Requirements>
-    <Sets>
-      <Set Name="Mailbox" MinVersion="1.5"/>
-    </Sets>
-  </Requirements>
-  <Hosts>
-    <Host Name="Mailbox"/>
-  </Hosts>
-  <DefaultSettings>
-    <SourceLocation DefaultValue="https://localhost:3001/addin/src/taskpane.html"/>
-  </DefaultSettings>
 
-  <!-- Version Overrides -->
-  <VersionOverrides xmlns="http://schemas.microsoft.com/office/mailappversionoverrides/1.0" Version="1.0">
-    <Requirements>
-      <Sets>
-        <Set Name="Mailbox" MinVersion="1.5"/>
-      </Sets>
-    </Requirements>
-    <Hosts>
-      <Host xsi:type="MailHost">
-        <DesktopFormFactor>
-          <ExtensionPoint xsi:type="MessageReadCommandSurface">
-            <OfficeControl xsi:type="Button" id="sendToSalesforce">
-              <Label resid="sendToSalesforceLabel"/>
-              <Icon>
-                <bt:Image size="16" resid="icon16"/>
-              </Icon>
-              <Action xsi:type="ShowTaskpane">
-                <SourceLocation resid="TaskPaneUrl"/>
-              </Action>
-            </OfficeControl>
-            <OfficeControl xsi:type="Button" id="openSettings">
-              <Label resid="openSettingsLabel"/>
-              <Icon>
-                <bt:Image size="16" resid="icon16"/>
-              </Icon>
-              <Action xsi:type="ShowTaskpane">
-                <SourceLocation resid="SettingsPaneUrl"/>
-              </Action>
-            </OfficeControl>
-          </ExtensionPoint>
+  <Rule xsi:type="RuleCollection" Mode="Or">
+    <Rule xsi:type="ItemIs" ItemType="Message" FormType="Read"/>
+    <Rule xsi:type="ItemIs" ItemType="Message" FormType="Compose"/>
+  </Rule>
 
-          <!-- OnMessageSend -->
-          <ExtensionPoint xsi:type="MessageComposeCommandSurface">
-            <OfficeControl xsi:type="EventHandler" id="onMessageSendHandler">
-              <Label resid="onSendLabel"/>
-              <Action xsi:type="ExecuteFunction">
-                <FunctionName>onMessageSend</FunctionName>
-              </Action>
-            </OfficeControl>
-          </ExtensionPoint>
-        </DesktopFormFactor>
-      </Host>
-    </Hosts>
+  <DisableEntityHighlighting>false</DisableEntityHighlighting>
 
-    <!-- Resources -->
+  <VersionOverrides xmlns="http://schemas.microsoft.com/office/mailappversionoverrides/1.1"
+                    xsi:type="VersionOverridesV1_1">
+
+    <Hosts><Host xsi:type="MailHost"><DesktopFormFactor>
+      <FunctionFile resid="residFunctionFile"/>
+
+      <ExtensionPoint xsi:type="MessageReadCommandSurface">
+        <OfficeTab id="TabDefault"><Group id="msgReadGroup" label="Salesforce">
+          <Control xsi:type="Button" id="btnSendToSF" enabled="true" label="Send to Salesforce">
+            <Icon><bt:Image size="16" resid="icon16"/><bt:Image size="32" resid="icon32"/><bt:Image size="80" resid="icon80"/></Icon>
+            <Action xsi:type="ExecuteFunction"><FunctionName>sendToSalesforce</FunctionName></Action>
+          </Control>
+          <Control xsi:type="Button" id="btnSettings" enabled="true" label="Settings">
+            <Icon><bt:Image size="16" resid="icon16"/><bt:Image size="32" resid="icon32"/><bt:Image size="80" resid="icon80"/></Icon>
+            <Action xsi:type="ExecuteFunction"><FunctionName>openSettings</FunctionName></Action>
+          </Control>
+        </Group></OfficeTab>
+      </ExtensionPoint>
+
+      <ExtensionPoint xsi:type="Events">
+        <Event Type="ItemSend" FunctionName="onMessageSendHandler"/>
+      </ExtensionPoint>
+
+    </DesktopFormFactor></Host></Hosts>
+
     <Resources>
       <bt:Images>
         <bt:Image id="icon16" DefaultValue="https://localhost:3001/addin/assets/icon-16.png"/>
+        <bt:Image id="icon32" DefaultValue="https://localhost:3001/addin/assets/icon-32.png"/>
+        <bt:Image id="icon80" DefaultValue="https://localhost:3001/addin/assets/icon-32.png"/>
       </bt:Images>
       <bt:Urls>
-        <bt:Url id="TaskPaneUrl" DefaultValue="https://localhost:3001/addin/src/taskpane.html"/>
-        <bt:Url id="SettingsPaneUrl" DefaultValue="https://localhost:3001/addin/src/settings.html"/>
+        <bt:Url id="residFunctionFile" DefaultValue="https://localhost:3001/addin/src/function-file.html"/>
       </bt:Urls>
-      <bt:ShortStrings>
-        <bt:String id="sendToSalesforceLabel" DefaultValue="Send to Salesforce"/>
-        <bt:String id="openSettingsLabel" DefaultValue="Settings"/>
-        <bt:String id="onSendLabel" DefaultValue="Log Task"/>
-      </bt:ShortStrings>
     </Resources>
 
-    <!-- Function File for OnMessageSend -->
-    <FunctionFile resid="EventHandlerUrl"/>
-    <bt:Urls>
-      <bt:Url id="EventHandlerUrl" DefaultValue="https://localhost:3001/addin/src/events.html"/>
-    </bt:Urls>
   </VersionOverrides>
 </OfficeApp>

@@ -100,7 +100,7 @@ export async function upsertContactByFour(token, { email, firstName, lastName, c
   return { contactId, contactUrl, preview };
 }
 
-// New: Create EmailMessage + relation to Contact
+// Create EmailMessage + relation to Contact
 export async function createEmailMessageForContact(token, { contactId, subject, htmlBody, textBody, from, to, cc, messageDate, direction }){
   const payload = {
     Subject: subject || '',
@@ -120,10 +120,10 @@ export async function createEmailMessageForContact(token, { contactId, subject, 
     await sfPost(token, '/services/data/v61.0/sobjects/EmailMessageRelation', {
       EmailMessageId: emailId,
       RelationId: contactId,
-      RelationType: 'ToAddress' // minimal link; SF populates participants via addresses too
+      RelationType: 'ToAddress'
     });
   }catch(e){
-    // If relation creation fails, still return email id (the EmailMessage exists)
+    // Best-effort relation; continue
   }
 
   const emailUrl = `${token.instance_url}/lightning/r/EmailMessage/${emailId}/view`;

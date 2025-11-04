@@ -98,7 +98,6 @@ app.post('/api/sf/save-email', async (req,res)=>{
   try{
     const token = await ensureToken(req.session);
     const { senderEmail, subject, htmlBody, textBody, to, cc, messageDate, direction, charter } = req.body || {};
-    // Upsert Contact by sender email; name unknown here (we only have address)
     const { contactId } = await upsertContactByFour(token, { email: senderEmail, firstName:'', lastName:'', charter });
     const { emailId, emailUrl } = await createEmailMessageForContact(token, {
       contactId,
